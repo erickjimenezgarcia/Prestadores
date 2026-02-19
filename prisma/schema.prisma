@@ -1,0 +1,62 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Infraestructura {
+  // ✅ clave principal
+  objectid   BigInt @id
+
+  // ✅ campos que pediste
+  tipoCap    String? @map("tipo_cap")
+  tipodefuen String?
+  epsCorrec  String? @map("eps_correc")
+  nombre     String?
+  prestador  String?
+  x          Float?
+  y          Float?
+  tipoPrest  String? @map("tipo_prest")
+  tipoInfra  String? @map("tipo_infra")
+  departamen String?
+  provincia  String?
+  distrito   String?
+
+
+  usuarios InfraestructuraUsuario[]
+
+  @@index([departamen, provincia, distrito])
+  @@map("infraestructura")
+}
+
+model Usuario {
+  id        BigInt   @id @default(autoincrement())
+  nombres   String
+  apellidos String
+  correo    String   @unique
+  telefono  String?
+  createdAt DateTime @default(now())
+
+  infra InfraestructuraUsuario[]
+
+  @@map("usuarios")
+}
+
+model InfraestructuraUsuario {
+  id        BigInt   @id @default(autoincrement())
+  createdAt DateTime @default(now())
+
+  objectid  BigInt
+  usuarioId BigInt
+
+  infraestructura Infraestructura @relation(fields: [objectid], references: [objectid], onDelete: Cascade)
+  usuario         Usuario         @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@unique([objectid, usuarioId])
+  @@index([objectid])
+  @@index([usuarioId])
+  @@map("infraestructura_usuarios")
+}
