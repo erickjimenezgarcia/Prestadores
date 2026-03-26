@@ -64,6 +64,7 @@ export default function HomePage() {
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<InfraDetail | null>(null);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -71,6 +72,193 @@ export default function HomePage() {
   const [saving, setSaving] = useState(false);
   const depNorm = useMemo(() => normalizeDep(dep), [dep]);
   useEffect(() => setMounted(true), []);
+
+  const [depUser, setDepUser] = useState("JUNIN");
+const [provUser, setProvUser] = useState("");
+const [distUser, setDistUser] = useState("");
+
+const [provinciasUser, setProvinciasUser] = useState<string[]>([]);
+const [distritosUser, setDistritosUser] = useState<string[]>([]);
+
+const [loadingProvUser, setLoadingProvUser] = useState(false);
+const [loadingDistUser, setLoadingDistUser] = useState(false);
+
+const [massModalOpen, setMassModalOpen] = useState(false);
+const [massSaving, setMassSaving] = useState(false);
+
+const [massForm, setMassForm] = useState({
+  nombres: "",
+  apellidos: "",
+  correo: "",
+  telefono: "",
+});
+
+
+
+type InfraMassItem = {
+  objectid: string;
+  nombre?: string | null;
+  prestador?: string | null;
+  provincia?: string | null;
+  distrito?: string | null;
+  hasUser: boolean;
+  usuariosCount: number;
+};
+
+const [massItems, setMassItems] = useState<InfraMassItem[]>([]);
+const [loadingMassItems, setLoadingMassItems] = useState(false);
+
+const openMassModal = () => {
+  setMassForm({ nombres: "", apellidos: "", correo: "", telefono: "" });
+  setMassModalOpen(true);
+};
+
+const closeMassModal = () => {
+  if (massSaving) return;
+  setMassModalOpen(false);
+  setMassForm({ nombres: "", apellidos: "", correo: "", telefono: "" });
+};
+
+
+
+
+
+const loadProvinciasUser = async (departamento: string) => {
+  if (!departamento) {
+    setProvinciasUser([]);
+    return;
+  }
+
+  setLoadingProvUser(true);
+  try {
+    const res = await fetch(
+      `/api/infra/provincias?departamento=${encodeURIComponent(departamento)}`
+    );
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data?.error || "No se pudieron obtener provincias");
+    }
+
+    setProvinciasUser(data.items ?? []);
+  } catch (e) {
+    console.error(e);
+    setProvinciasUser([]);
+  } finally {
+    setLoadingProvUser(false);
+  }
+};
+
+const loadDistritosUser = async (departamento: string, provincia: string) => {
+  if (!departamento || !provincia) {
+    setDistritosUser([]);
+    return;
+  }
+
+  setLoadingDistUser(true);
+  try {
+    const res = await fetch(
+      `/api/infra/distritos?departamento=${encodeURIComponent(departamento)}&provincia=${encodeURIComponent(provincia)}`
+    );
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data?.error || "No se pudieron obtener distritos");
+    }
+
+    setDistritosUser(data.items ?? []);
+  } catch (e) {
+    console.error(e);
+    setDistritosUser([]);
+  } finally {
+    setLoadingDistUser(false);
+  }
+};
+
+const loadMassItems = async (
+  departamento: string,
+  provincia?: string,
+  distrito?: string
+) => {
+  if (!departamento) {
+    setMassItems([]);
+    return;
+  }
+
+  setLoadingMassItems(true);
+  try {
+    const params = new URLSearchParams();
+    params.set("departamento", departamento);
+    if (provincia) params.set("provincia", provincia);
+    if (distrito) params.set("distrito", distrito);
+
+    const res = await fetch(`/api/infra/by-scope?${params.toString()}`);
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data?.error || "No se pudieron cargar infraestructuras");
+    }
+
+    setMassItems(data.items ?? []);
+  } catch (e) {
+    console.error(e);
+    setMassItems([]);
+  } finally {
+    setLoadingMassItems(false);
+  }
+};
+
+useEffect(() => {
+  setProvUser("");
+  setDistUser("");
+  setDistritosUser([]);
+  loadProvinciasUser(depUser);
+}, [depUser]);
+
+useEffect(() => {
+  setDistUser("");
+
+  if (provUser) {
+    loadDistritosUser(depUser, provUser);
+  } else {
+    setDistritosUser([]);
+  }
+}, [depUser, provUser]);
+
+useEffect(() => {
+  loadMassItems(depUser, provUser || undefined, distUser || undefined);
+}, [depUser, provUser, distUser]);
+
+  const handleDeleteUser = async (
+  objectid: string | number,
+  userId: string | number
+) => {
+  const ok = window.confirm("¿Seguro que deseas quitar este responsable de este punto?");
+  if (!ok) return;
+
+  try {
+    const res = await fetch(
+      `/api/infra/${encodeURIComponent(String(objectid))}/usuarios/${encodeURIComponent(String(userId))}`,
+      {
+        method: "DELETE",
+      }
+    );
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data?.error || "No se pudo eliminar la relación");
+    }
+
+    if (selectedId) {
+      await loadDetail(selectedId);
+    }
+    await loadMarkers(depNorm);
+
+  } catch (e: any) {
+    alert(`Error eliminando responsable: ${String(e?.message ?? e)}`);
+  }
+};
 
   async function loadMarkers(depValue: string) {
     setLoadingMarkers(true);
@@ -110,37 +298,124 @@ export default function HomePage() {
     loadDetail(id);
   };
 
+  
+
   const openModal = () => {
-    setForm({ nombres: "", apellidos: "", correo: "", telefono: "" });
-    setModalOpen(true);
-  };
+  setEditingUserId(null);
+  setForm({ nombres: "", apellidos: "", correo: "", telefono: "" });
+  setModalOpen(true);
+};
+
+const openEditModal = (u: any) => {
+  setEditingUserId(String(u.id));
+  setForm({
+    nombres: u.nombres ?? "",
+    apellidos: u.apellidos ?? "",
+    correo: u.correo ?? "",
+    telefono: u.telefono ?? "",
+  });
+  setModalOpen(true);
+};
+
+const closeModal = () => {
+  if (saving) return;
+  setModalOpen(false);
+  setEditingUserId(null);
+  setForm({ nombres: "", apellidos: "", correo: "", telefono: "" });
+};
 
   const saveUser = async () => {
-    if (!selectedId) return;
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/infra/${encodeURIComponent(selectedId)}/usuarios`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nombres: form.nombres,
-          apellidos: form.apellidos,
-          correo: form.correo,
-          telefono: form.telefono || null,
-        }),
-      });
-      if (!res.ok) throw new Error(await res.text());
+  if (!selectedId) return;
 
-      setModalOpen(false);
-      // refrescar detalle y marcadores (para que el punto cambie a verde)
-      await loadDetail(selectedId);
-      await loadMarkers(depNorm);
-    } catch (e: any) {
-      alert(`Error guardando usuario: ${String(e?.message ?? e)}`);
-    } finally {
-      setSaving(false);
+  setSaving(true);
+  try {
+    const isEdit = !!editingUserId;
+
+    const url = isEdit
+      ? `/api/usuarios/${encodeURIComponent(editingUserId)}`
+      : `/api/infra/${encodeURIComponent(selectedId)}/usuarios`;
+
+    const method = isEdit ? "PUT" : "POST";
+
+    const res = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nombres: form.nombres.trim(),
+        apellidos: form.apellidos.trim(),
+        correo: form.correo.trim().toLowerCase(),
+        telefono: form.telefono.trim() || null,
+      }),
+    });
+
+    let errorText = "";
+    if (!res.ok) {
+      try {
+        const data = await res.json();
+        errorText = data?.error || JSON.stringify(data);
+      } catch {
+        errorText = await res.text();
+      }
+      throw new Error(errorText || "No se pudo guardar el usuario");
     }
-  };
+
+    closeModal();
+    setEditingUserId(null);
+    setForm({ nombres: "", apellidos: "", correo: "", telefono: "" });
+
+    await loadDetail(selectedId);
+    await loadMarkers(depNorm);
+  } catch (e: any) {
+    alert(`Error guardando usuario: ${String(e?.message ?? e)}`);
+  } finally {
+    setSaving(false);
+  }
+};
+
+const saveMassUser = async () => {
+  if (massItems.length === 0) return;
+
+  setMassSaving(true);
+  try {
+    const res = await fetch(`/api/infra/usuarios-masivo`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        objectids: massItems.map((x) => x.objectid),
+        nombres: massForm.nombres.trim(),
+        apellidos: massForm.apellidos.trim(),
+        correo: massForm.correo.trim().toLowerCase(),
+        telefono: massForm.telefono.trim() || null,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data?.error || "No se pudo realizar la asignación masiva");
+    }
+
+    closeMassModal();
+
+    // refresca la sección masiva
+    await loadMassItems(depUser, provUser || undefined, distUser || undefined);
+
+    // refresca mapa/detalle antiguos por si un punto visible cambió a verde
+    await loadMarkers(depNorm);
+    if (selectedId) {
+      await loadDetail(selectedId);
+    }
+
+    alert(`Asignación masiva completada. Asociado a ${data?.count ?? 0} infraestructura(s).`);
+  } catch (e: any) {
+    alert(`Error en asignación masiva: ${String(e?.message ?? e)}`);
+  } finally {
+    setMassSaving(false);
+  }
+};
+
 
   return (
     <div style={{ height: "100vh", display: "grid", gridTemplateRows: "64px 1fr" }}>
@@ -218,6 +493,128 @@ export default function HomePage() {
           <div><span style={{ color: "#22c55e", fontWeight: 800 }}>●</span> Con usuario</div>
           <div><span style={{ color: "#ef4444", fontWeight: 800 }}>●</span> Sin usuario</div>
         </div>
+
+        <hr style={{ margin: "14px 0", borderColor: "#243041" }} />
+
+        <div style={{ marginTop: 6 }}>
+  <div style={{ fontSize: 14, fontWeight: 800, color: "#e5e7eb", marginBottom: 10 }}>
+    Añadir usuarios en masa
+  </div>
+
+  <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 12 }}>
+    Filtra infraestructuras por ubicación para asignar responsables en lote.
+  </div>
+
+  <label style={{ display: "block", fontSize: 12, marginBottom: 6 }}>Departamento</label>
+  <select
+    value={depUser}
+    onChange={(e) => setDepUser(e.target.value)}
+    className="ui-select"
+  >
+    {[
+      "AMAZONAS","ANCASH","APURIMAC","AREQUIPA","AYACUCHO","CAJAMARCA","CUSCO",
+      "HUANCAVELICA","HUANUCO","ICA","JUNIN","LA LIBERTAD","LAMBAYEQUE","LIMA",
+      "LORETO","MADRE DE DIOS","MOQUEGUA","PASCO","PIURA","PUNO","SAN MARTIN",
+      "TACNA","TUMBES","UCAYALI","CALLAO"
+    ].map((d) => (
+      <option key={d} value={d}>{d}</option>
+    ))}
+  </select>
+
+  <label style={{ display: "block", fontSize: 12, marginTop: 12, marginBottom: 6 }}>
+    Provincia
+  </label>
+  <select
+    value={provUser}
+    onChange={(e) => setProvUser(e.target.value)}
+    className="ui-select"
+    disabled={!depUser || loadingProvUser}
+  >
+    <option value="">{loadingProvUser ? "Cargando provincias..." : "Todas"}</option>
+    {provinciasUser.map((p) => (
+      <option key={p} value={p}>{p}</option>
+    ))}
+  </select>
+
+  <label style={{ display: "block", fontSize: 12, marginTop: 12, marginBottom: 6 }}>
+    Distrito
+  </label>
+  <select
+    value={distUser}
+    onChange={(e) => setDistUser(e.target.value)}
+    className="ui-select"
+    disabled={!provUser || loadingDistUser}
+  >
+    <option value="">{loadingDistUser ? "Cargando distritos..." : "Todos"}</option>
+    {distritosUser.map((d) => (
+      <option key={d} value={d}>{d}</option>
+    ))}
+  </select>
+
+  <div style={{ marginTop: 12, fontSize: 12, color: "#94a3b8" }}>
+    {loadingMassItems ? "Buscando infraestructuras..." : `Resultados: ${massItems.length}`}
+  </div>
+
+  {/* <div
+    style={{
+      marginTop: 12,
+      maxHeight: 280,
+      overflow: "auto",
+      display: "grid",
+      gap: 8,
+    }}
+  >
+    {massItems.length === 0 ? (
+      <div style={{ fontSize: 12, color: "#94a3b8" }}>
+        No se encontraron infraestructuras para los filtros seleccionados.
+      </div>
+    ) : (
+      massItems.map((item) => (
+        <div
+          key={item.objectid}
+          className="ui-card"
+          style={{
+            padding: 10,
+            border: "1px solid #243041",
+            borderRadius: 12,
+            background: "#111827",
+          }}
+        >
+          <div style={{ fontWeight: 700, color: "#e5e7eb", fontSize: 13 }}>
+            {item.nombre || `Infraestructura ${item.objectid}`}
+          </div>
+
+          <div style={{ marginTop: 4, fontSize: 12, color: "#94a3b8" }}>
+            {item.prestador ?? "-"}
+          </div>
+
+          <div style={{ marginTop: 4, fontSize: 12, color: "#94a3b8" }}>
+            {item.provincia ?? "-"} / {item.distrito ?? "-"}
+          </div>
+
+          <div style={{ marginTop: 6, fontSize: 12, color: item.hasUser ? "#22c55e" : "#ef4444" }}>
+            {item.hasUser
+              ? `Con usuarios (${item.usuariosCount})`
+              : "Sin usuarios"}
+          </div>
+        </div>
+      ))
+    )}
+  </div> */}
+
+  <div style={{ marginTop: 12 }}>
+    <button
+      type="button"
+      className="ui-btn ui-btn-primary"
+      style={{ width: "100%" }}
+      disabled={massItems.length === 0}
+      onClick={openMassModal}
+    >
+      Continuar con asignación masiva
+    </button>
+  </div>
+</div>
+
       </aside>
 
       {/* Center: mapa */}
@@ -279,30 +676,79 @@ export default function HomePage() {
 
             <hr style={{ margin: "14px 0", borderColor: "#243041" }} />
 
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <h4 style={{ margin: 0, color: "#e5e7eb" }}>Responsable</h4>
-              {!detail.hasUser && (
-                <button onClick={openModal} className="ui-btn ui-btn-primary" style={{ fontSize: 13 }}>
-                  Añadir responsable
-                </button>
-              )}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom:"1rem" }}>
+              <h4 style={{ margin: 0, color: "#e5e7eb" }}>Responsables</h4>
+
+              <button onClick={openModal} className="ui-btn ui-btn-primary" style={{ fontSize: 13 }}>
+                Añadir responsable
+              </button>
             </div>
 
-            {detail.usuarios.length === 0 ? (
-              <div style={{ marginTop: 10, fontSize: 13, color: "#94a3b8" }}>
-                Este punto aún no tiene usuarios registrados.
-              </div>
-            ) : (
-              <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-                {detail.usuarios.map((u) => (
-                  <div key={u.id} className="ui-card">
-                    <div style={{ fontWeight: 800 }}>{u.nombres} {u.apellidos}</div>
-                    <div style={{ fontSize: 13 }}>{u.correo}</div>
-                    <div style={{ fontSize: 13, color: "#94a3b8" }}>{u.telefono ?? "-"}</div>
-                  </div>
-                ))}
-              </div>
-            )}
+            {detail.usuarios.map((u) => (
+  <div
+    key={u.id}
+    className="ui-card"
+    style={{
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      marginBottom:"1rem",
+      gap: 8,
+    }}
+  >
+    <div>
+      <div style={{ fontWeight: 800 }}>
+        {u.nombres} {u.apellidos}
+      </div>
+      <div style={{ fontSize: 13 }}>{u.correo}</div>
+      <div style={{ fontSize: 13, color: "#94a3b8" }}>
+        {u.telefono ?? "-"}
+      </div>
+    </div>
+
+    <div style={{ display: "flex", gap: 8 }}>
+      <button
+        type="button"
+        onClick={() => openEditModal(u)}
+        title="Editar responsable"
+        style={{
+          width: 34,
+          height: 34,
+          borderRadius: 10,
+          border: "1px solid #334155",
+          background: "#111827",
+          color: "#e5e7eb",
+          cursor: "pointer",
+          display: "grid",
+          placeItems: "center",
+          fontSize: 14,
+        }}
+      >
+        ✏️
+      </button>
+
+      <button
+        type="button"
+        onClick={() => handleDeleteUser(detail.objectid, u.id)}
+        title="Eliminar responsable"
+        style={{
+          width: 34,
+          height: 34,
+          borderRadius: 10,
+          border: "1px solid #7f1d1d",
+          background: "#111827",
+          color: "#ef4444",
+          cursor: "pointer",
+          display: "grid",
+          placeItems: "center",
+          fontSize: 14,
+        }}
+      >
+        🗑️
+      </button>
+    </div>
+  </div>
+))}
           </>
         )}
       </aside>
@@ -310,7 +756,7 @@ export default function HomePage() {
       {/* Modal */}
       {modalOpen && (
         <div
-          onClick={() => !saving && setModalOpen(false)}
+          onClick={() => !saving && closeModal()}
           style={{
             position: "fixed",
             inset: 0,
@@ -343,17 +789,17 @@ export default function HomePage() {
                 gap: 12,
               }}
             >
-              <div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>
-                  Registrar responsable
-                </div>
-                <div style={{ marginTop: 4, fontSize: 13, color: "#64748b" }}>
-                  Vincula un responsable a este punto para enviar alertas cuando suba el nivel.
-                </div>
-              </div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>
+  {editingUserId ? "Editar responsable" : "Registrar responsable"}
+</div>
+<div style={{ marginTop: 4, fontSize: 13, color: "#64748b" }}>
+  {editingUserId
+    ? "Actualiza los datos del responsable asociado a este punto."
+    : "Vincula un responsable a este punto para enviar alertas cuando suba el nivel."}
+</div>
 
               <button
-                onClick={() => !saving && setModalOpen(false)}
+                onClick={() => !saving && closeModal()}
                 aria-label="Cerrar"
                 style={{
                   width: 36,
@@ -450,7 +896,7 @@ export default function HomePage() {
                 <div style={{ display: "flex", gap: 10 }}>
                   <button
                     disabled={saving}
-                    onClick={() => setModalOpen(false)}
+                    onClick={() => closeModal()}
                     style={{
                       padding: "10px 14px",
                       borderRadius: 12,
@@ -495,7 +941,7 @@ export default function HomePage() {
                       boxShadow: "0 10px 30px rgba(22,163,74,.25)",
                     }}
                   >
-                    {saving ? "Guardando..." : "Guardar"}
+                    {saving ? "Guardando..." : editingUserId ? "Actualizar" : "Guardar"}
                   </button>
                 </div>
               </div>
@@ -503,6 +949,152 @@ export default function HomePage() {
           </div>
         </div>
       )}
+      {massModalOpen && (
+  <div
+    onClick={() => !massSaving && closeMassModal()}
+    style={{
+      position: "fixed",
+      inset: 0,
+      zIndex: 10000,
+      background: "rgba(2,6,23,.55)",
+      backdropFilter: "blur(10px)",
+      display: "grid",
+      placeItems: "center",
+      padding: 16,
+    }}
+  >
+    <div
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        width: "min(620px, 100%)",
+        borderRadius: 20,
+        background: "#ffffff",
+        boxShadow: "0 24px 80px rgba(0,0,0,.35)",
+        overflow: "hidden",
+      }}
+    >
+      <div
+        style={{
+          padding: "18px 20px",
+          borderBottom: "1px solid #eef2f7",
+          background: "linear-gradient(180deg, #ffffff 0%, #f8fbff 100%)",
+        }}
+      >
+        <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>
+          Asignación masiva de responsable
+        </div>
+        <div style={{ marginTop: 4, fontSize: 13, color: "#64748b" }}>
+          Se asignará este responsable a {massItems.length} infraestructura(s) filtrada(s).
+        </div>
+      </div>
+
+      <div style={{ padding: 20, display: "grid", gap: 14 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div>
+            <label style={{ display: "block", fontSize: 12, marginBottom: 6, color: "#475569" }}>
+              Nombres
+            </label>
+            <input
+              style={inputModernStyle}
+              value={massForm.nombres}
+              onChange={(e) => setMassForm((s) => ({ ...s, nombres: e.target.value }))}
+              placeholder="Nombres"
+            />
+          </div>
+
+          <div>
+            <label style={{ display: "block", fontSize: 12, marginBottom: 6, color: "#475569" }}>
+              Apellidos
+            </label>
+            <input
+              style={inputModernStyle}
+              value={massForm.apellidos}
+              onChange={(e) => setMassForm((s) => ({ ...s, apellidos: e.target.value }))}
+              placeholder="Apellidos"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label style={{ display: "block", fontSize: 12, marginBottom: 6, color: "#475569" }}>
+            Correo
+          </label>
+          <input
+            type="email"
+            style={inputModernStyle}
+            value={massForm.correo}
+            onChange={(e) => setMassForm((s) => ({ ...s, correo: e.target.value }))}
+            placeholder="correo@dominio.com"
+          />
+        </div>
+
+        <div>
+          <label style={{ display: "block", fontSize: 12, marginBottom: 6, color: "#475569" }}>
+            Teléfono
+          </label>
+          <input
+            style={inputModernStyle}
+            value={massForm.telefono}
+            onChange={(e) => setMassForm((s) => ({ ...s, telefono: e.target.value }))}
+            placeholder="987654321"
+          />
+        </div>
+
+        <div
+          style={{
+            padding: 12,
+            borderRadius: 14,
+            background: "#f8fafc",
+            border: "1px solid #e2e8f0",
+            fontSize: 13,
+            color: "#475569",
+          }}
+        >
+          <b>Ámbito seleccionado:</b><br />
+          Departamento: {depUser}<br />
+          Provincia: {provUser || "Todas"}<br />
+          Distrito: {distUser || "Todos"}<br />
+          Resultados: {massItems.length}
+        </div>
+      </div>
+
+      <div
+        style={{
+          padding: 16,
+          display: "flex",
+          justifyContent: "flex-end",
+          gap: 10,
+          borderTop: "1px solid #eef2f7",
+          background: "#fff",
+        }}
+      >
+        <button
+          type="button"
+          className="ui-btn"
+          onClick={closeMassModal}
+          disabled={massSaving}
+        >
+          Cancelar
+        </button>
+
+        <button
+          type="button"
+          className="ui-btn ui-btn-primary"
+          onClick={saveMassUser}
+          disabled={
+            massSaving ||
+            !massForm.nombres.trim() ||
+            !massForm.apellidos.trim() ||
+            !massForm.correo.trim() ||
+            massItems.length === 0
+          }
+        >
+          {massSaving ? "Guardando..." : "Asignar a todos"}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
       </div>
     </div>
   );
