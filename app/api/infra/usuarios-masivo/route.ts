@@ -61,18 +61,20 @@ export async function POST(req: Request) {
       });
     }
 
+    
+
     await prisma.$transaction(
-      objectids.map((objectid) =>
+      objectids.map((objectid: bigint) =>
         prisma.infraestructuraUsuario.upsert({
           where: {
             objectid_usuarioId: {
               objectid,
-              usuarioId: usuario!.id,
+              usuarioId: usuario.id,
             },
           },
           create: {
             objectid,
-            usuarioId: usuario!.id,
+            usuarioId: usuario.id,
           },
           update: {},
         })
