@@ -19,6 +19,7 @@ export async function GET(req: Request) {
         objectid: true,
         x: true,
         y: true,
+        prestador: true,
         // solo necesitamos saber si existe al menos 1
         usuarios: { select: { id: true }, take: 1 },
       },
@@ -32,6 +33,7 @@ export async function GET(req: Request) {
         x: r.x,
         y: r.y,
         hasUser: r.usuarios.length > 0,
+        prestador: r.prestador ?? null,
       }));
 
     return NextResponse.json(jsonBigIntSafe({ dep, count: data.length, data }));

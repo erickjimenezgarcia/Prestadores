@@ -37,6 +37,7 @@ type InfraDetail = {
   provincia?: string | null;
   distrito?: string | null;
   hasUser: boolean;
+  cant_usuarios: number | 0;
   usuarios: Usuario[];
 };
 
@@ -57,7 +58,7 @@ const inputModernStyle: React.CSSProperties = {
 
 export default function HomePage() {
   const [mounted, setMounted] = useState(false);
-  const [dep, setDep] = useState<string>("LIMA");
+  const [dep, setDep] = useState<string>("JUNIN");
 
   const [markers, setMarkers] = useState<MarkerItem[]>([]);
   const [loadingMarkers, setLoadingMarkers] = useState(false);
@@ -656,22 +657,21 @@ const saveMassUser = async () => {
 
         {selectedId && detail && (
           <>
-            <div style={{ fontSize: 12, color: "#94a3b8" }}>OBJECTID</div>
+            {/* <div style={{ fontSize: 12, color: "#94a3b8" }}>OBJECTID</div>
             <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 8, color: "#e5e7eb" }}>
               {detail.objectid}
-            </div>
+            </div> */}
 
             <div style={{ fontSize: 13, lineHeight: 1.5, color: "#e5e7eb" }}>
               <div><b>Nombre:</b> {detail.nombre ?? "-"}</div>
               <div><b>Prestador:</b> {detail.prestador ?? "-"}</div>
-              <div><b>EPS corr.:</b> {detail.epsCorrec ?? "-"}</div>
-              <div><b>Tipo infra:</b> {detail.tipoInfra ?? "-"}</div>
-              <div><b>Tipo cap:</b> {detail.tipoCap ?? "-"}</div>
-              <div><b>Tipodefuen:</b> {detail.tipodefuen ?? "-"}</div>
+              <div><b>Tipo fuente:</b> {detail.tipodefuen ?? "-"}</div>
+              <div><b>Tipo captacion:</b> {detail.tipoCap ?? "-"}</div>
+              <div><b>Tipo infraestructura:</b> {detail.tipoInfra ?? "-"}</div>
+              <div><b>Cantidad Usuarios:</b> {detail.cant_usuarios ?? "0"}</div>
               <div><b>Dep:</b> {detail.departamen ?? "-"}</div>
               <div><b>Prov:</b> {detail.provincia ?? "-"}</div>
               <div><b>Dist:</b> {detail.distrito ?? "-"}</div>
-              <div><b>Coords:</b> {detail.y ?? "-"}, {detail.x ?? "-"}</div>
             </div>
 
             <hr style={{ margin: "14px 0", borderColor: "#243041" }} />

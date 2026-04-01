@@ -1,8 +1,8 @@
 // @ts-nocheck
 "use client";
 
-import { useEffect, useMemo } from "react";
-import { MapContainer, TileLayer, CircleMarker, useMap } from "react-leaflet";
+import { useEffect, useMemo, useState } from "react";
+import { MapContainer, TileLayer,Tooltip, CircleMarker, useMap, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 
 
@@ -11,7 +11,16 @@ type MarkerItem = {
   x: number;
   y: number;
   hasUser: boolean;
+  prestador?: string | null;
 };
+
+function NoLeafletPrefix() {
+  const map = useMap();
+  useEffect(() => {
+    map.attributionControl.setPrefix("");
+  }, [map]);
+  return null;
+}
 
 
 
@@ -51,6 +60,8 @@ const DEP_VIEWS: Record<string, DeptView> = {
   __DEFAULT__: { center: [-9.19, -75.015], zoom: 5 },
 };
 
+const ZOOM_LABEL_THRESHOLD = 13.5;
+
 function FitToDept({ dep }: { dep: string }) {
   const map = useMap();
 
@@ -77,6 +88,16 @@ function FitToDept({ dep }: { dep: string }) {
   return null;
 }
 
+function ZoomWatcher({ onZoomChange }: { onZoomChange: (z: number) => void }) {
+  const map = useMapEvents({
+    zoomend: () => onZoomChange(map.getZoom()),
+  });
+  useEffect(() => {
+    onZoomChange(map.getZoom());
+  }, []);
+  return null;
+}
+
 export default function InfraMap({
   dep,
   markers,
@@ -89,14 +110,9 @@ export default function InfraMap({
   onSelect: (id: string) => void;
 }) {
   const initial = useMemo(() => DEP_VIEWS.__DEFAULT__, []);
+  const [currentZoom, setCurrentZoom] = useState(initial.zoom);
 
-function NoLeafletPrefix() {
-  const map = useMap();
-  useEffect(() => {
-    map.attributionControl.setPrefix(""); // ✅ quita "Leaflet"
-  }, [map]);
-  return null;
-}
+  const showLabels = currentZoom >= ZOOM_LABEL_THRESHOLD;
 
   return (
     <div style={{ height: "100%", width: "100%" }}>
@@ -104,10 +120,11 @@ function NoLeafletPrefix() {
         center={initial.center}
         zoom={initial.zoom}
         style={{ height: "100%", width: "100%" }}
-        preferCanvas={true}
+        preferCanvas={false} // ← debe ser false para que Tooltip funcione
       >
         <NoLeafletPrefix />
         <FitToDept dep={dep} />
+        <ZoomWatcher onZoomChange={setCurrentZoom} />
         <TileLayer
           attribution='&copy; OpenStreetMap'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -118,7 +135,7 @@ function NoLeafletPrefix() {
           return (
             <CircleMarker
               key={m.objectid}
-              center={[m.y, m.x]} // Leaflet usa [lat, lng] => y=lat, x=lng
+              center={[m.y, m.x]}
               radius={isSel ? 9 : 6}
               pathOptions={{
                 color: m.hasUser ? "green" : "red",
@@ -129,7 +146,20 @@ function NoLeafletPrefix() {
               eventHandlers={{
                 click: () => onSelect(m.objectid),
               }}
-            />
+            >
+              {/* Label permanente solo con zoom >= 14 */}
+              {showLabels && m.prestador && (
+                <Tooltip
+                  permanent
+                  direction="top"
+                  offset={[0, -8]}
+                  opacity={1}
+                  className="infra-label"
+                >
+                  {m.prestador}
+                </Tooltip>
+              )}
+            </CircleMarker>
           );
         })}
       </MapContainer>

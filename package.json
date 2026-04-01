@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "import:infra": "tsx scripts/import-infra.ts",
+    "export:junin": "tsx scripts/extrac.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {

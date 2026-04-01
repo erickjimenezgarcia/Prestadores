@@ -56,6 +56,18 @@ export async function POST(req: Request) {
       },
     });
 
+    const infraestructuras = await prisma.infraestructura.findMany({
+      where: {
+        objectid: { in: idsBig },
+      },
+      select: {
+        objectid: true,
+        cant_usuarios: true, // el nuevo campo
+      },
+    });
+
+
+
     // 3) Agrupar por objectid
     const map = new Map<string, any[]>();
     for (const r of rows) {
@@ -70,10 +82,18 @@ export async function POST(req: Request) {
     }
 
     // 4) construir respuesta en el mismo orden (si quieres)
-    const data = Array.from(map.entries()).map(([objectid, usuarios]) => ({
-      objectid,
-      usuarios: onlyWithUsers ? usuarios : usuarios, // aquí podrías devolver [] si quieres incluir también vacíos
-    }));
+    const data = Array.from(map.entries()).map(([objectid, usuarios]) => {
+      // Buscar la cantidad de usuarios de esta infraestructura
+      const cantUsuarios = infraestructuras.find(
+        (infra) => infra.objectid.toString() === objectid
+      )?.cant_usuarios ?? 0;
+
+      return {
+        objectid,
+        cant_usuarios: cantUsuarios,
+        usuarios: onlyWithUsers ? usuarios : usuarios, // aquí podrías devolver [] si quieres incluir también vacíos
+      };
+    });
 
     return NextResponse.json({ data }, { status: 200 });
   } catch (e: any) {

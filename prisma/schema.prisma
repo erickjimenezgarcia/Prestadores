@@ -24,7 +24,7 @@ model Infraestructura {
   departamen String?
   provincia  String?
   distrito   String?
-
+  cant_usuarios Int?
 
   usuarios InfraestructuraUsuario[]
 
