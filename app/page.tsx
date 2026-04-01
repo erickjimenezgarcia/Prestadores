@@ -450,7 +450,7 @@ const saveMassUser = async () => {
           VISOR DE INFRAESTRUCTURA
         </div>
         <div style={{ fontSize: 12, color: "#94a3b8" }}>
-          Responsable por punto • Alertas • Seguimiento
+          Responsable por punto • Alertas • Seguimiento • Data de CAMI YAKU
         </div>
       </div>
 
