@@ -1,28 +1,20 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
-import "leaflet/dist/leaflet.css";
+// app/layout.tsx
+import './globals.css';
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+
+export const metadata = {
+  title: "Geo Alertas Web",
+  description: "Sistema de infraestructura de agua y saneamiento",
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="es">
       <body>{children}</body>
     </html>
   );
 }
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-export const metadata: Metadata = {
-  title: "Infraestructuras",
-  description: "Directorio de infraestructuras",
-};
-

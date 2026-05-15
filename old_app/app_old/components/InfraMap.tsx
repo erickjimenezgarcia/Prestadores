@@ -17,7 +17,7 @@ type MarkerItem = {
 function NoLeafletPrefix() {
   const map = useMap();
   useEffect(() => {
-    map.attributionControl.setPrefix("");
+    map.attributionControl.setPrefix(false);
   }, [map]);
   return null;
 }
@@ -120,13 +120,14 @@ export default function InfraMap({
         center={initial.center}
         zoom={initial.zoom}
         style={{ height: "100%", width: "100%" }}
-        preferCanvas={false} // ← debe ser false para que Tooltip funcione
+        preferCanvas={false}
+        attributionControl={false}
       >
         <NoLeafletPrefix />
         <FitToDept dep={dep} />
         <ZoomWatcher onZoomChange={setCurrentZoom} />
         <TileLayer
-          attribution='&copy; OpenStreetMap'
+          attribution=''
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 

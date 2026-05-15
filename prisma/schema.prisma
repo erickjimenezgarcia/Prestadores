@@ -7,56 +7,338 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Infraestructura {
-  // ✅ clave principal
-  objectid   BigInt @id
+model Prestador {
+  id              Int      @id @map("id_prestador")
+  nombPrestador   String?
+  tipoPrestador   String?
+  formaAsociativa String?
+  brindaAgua      Boolean?
+  brindaAlcanta   Boolean?
+  brindaSantExc   Boolean?
+  brindaTrataRes  Boolean?
+  anioInfo        String?
+  ordenanzaMuni   Boolean?
+  contabilidadInd Boolean?
+  tieneEquipo     Boolean?
+  tieneCuaderno   Boolean?
+  proveedorCloro  String?
 
-  // ✅ campos que pediste
-  tipoCap    String? @map("tipo_cap")
-  tipodefuen String?
-  epsCorrec  String? @map("eps_correc")
-  nombre     String?
-  prestador  String?
-  x          Float?
-  y          Float?
-  tipoPrest  String? @map("tipo_prest")
-  tipoInfra  String? @map("tipo_infra")
-  departamen String?
-  provincia  String?
-  distrito   String?
-  cant_usuarios Int?
+  poblacionServicios     PoblacionServicio[]
+  sistemasAgua           SistemaAgua[]
+  fuentes                Fuente[]
+  prestadorCaptaciones   PrestadorCaptacion[]
+  detallePtaps           DetallePTAP[]
+  reservorios            Reservorio[]
+  ptars                  PTAR[]
+  detalleVertimientos    DetalleVertimiento[]
+  sistemasAlcantarillado SistemaAlcantarillado[]
 
-  usuarios InfraestructuraUsuario[]
+  usuarios PrestadorUsuario[]
 
-  @@index([departamen, provincia, distrito])
-  @@map("infraestructura")
+  @@map("prestador")
+}
+
+model CentroPoblado {
+  id     Int     @id
+  ubigeo String?
+  nombre String?
+
+  poblacionServicios     PoblacionServicio[]
+  sistemasAgua           SistemaAgua[]
+  fuentes                Fuente[]
+  captaciones            Captacion[]
+  detallePtaps           DetallePTAP[]
+  reservorios            Reservorio[]
+  ptars                  PTAR[]
+  detalleVertimientos    DetalleVertimiento[]
+  sistemasAlcantarillado SistemaAlcantarillado[]
+
+  @@map("centro_poblado")
+}
+
+model PoblacionServicio {
+  id           Int     @id @default(autoincrement())
+  idPrestador  Int     @map("id_prestador")
+  idCentroP    Int     @map("id_centroP")
+  departamento String?
+  provincia    String?
+  distrito     String?
+  lat          Float?
+  lng          Float?
+  poblacion    Int?
+  viviendas    Int?
+
+  prestador     Prestador     @relation(fields: [idPrestador], references: [id], onDelete: Cascade)
+  centroPoblado CentroPoblado @relation(fields: [idCentroP], references: [id], onDelete: Cascade)
+
+  @@index([idPrestador])
+  @@index([idCentroP])
+  @@map("poblacion_servicio")
+}
+
+model SistemaAguaGlobal {
+  id     Int     @id
+  nombre String?
+
+  sistemasAgua SistemaAgua[]
+  captaciones  Captacion[]
+  detallePtaps DetallePTAP[]
+  reservorios  Reservorio[]
+
+  @@map("sistema_agua_global")
+}
+
+model SistemaAgua {
+  id                  Int      @id @default(autoincrement())
+  idSistemaAguaGlobal Int?     @map("id_sistemaAguaGlobal")
+  idCentroP           Int      @map("id_centroP")
+  idPrestador         Int      @map("id_prestador")
+  tipoSistemaAgua     String?
+  numCaptaciones      Int?
+  numReservorios      Int?
+  numPTAP             Int?
+  lcantidadBombeo     Boolean?
+  origen              String?  @map("Origen")
+
+  sistemaAguaGlobal SistemaAguaGlobal? @relation(fields: [idSistemaAguaGlobal], references: [id], onDelete: SetNull)
+  centroPoblado     CentroPoblado      @relation(fields: [idCentroP], references: [id], onDelete: Cascade)
+  prestador         Prestador          @relation(fields: [idPrestador], references: [id], onDelete: Cascade)
+
+  @@index([idSistemaAguaGlobal])
+  @@index([idCentroP])
+  @@index([idPrestador])
+  @@map("sistema_agua")
+}
+
+model Fuente {
+  id             Int     @id @map("id_fuente")
+  idCentroP      Int     @map("id_centroP")
+  idPrestador    Int     @map("id_prestador")
+  tipoFuenteAgua String?
+  subTipoFuente  String?
+  nombFuente     String?
+  lat            Float?
+  lng            Float?
+
+  centroPoblado CentroPoblado @relation(fields: [idCentroP], references: [id], onDelete: Cascade)
+  prestador     Prestador     @relation(fields: [idPrestador], references: [id], onDelete: Cascade)
+
+  @@index([idCentroP])
+  @@index([idPrestador])
+  @@map("fuente")
+}
+
+model Captacion {
+  id                  Int      @id @map("id_captacion")
+  idSistemaAguaGlobal Int?     @map("id_sistemaAguaGlobal")
+  idCentroP           Int      @map("id_centroP")
+  tipoCaptacion       String?
+  lcomparte           Boolean?
+  lat                 Float?
+  lng                 Float?
+  lprotegida          Boolean?
+  antiguedad          Int?
+  estadoOperativo     String?
+  estadoFisico        String?
+  ldesinfectan        Boolean?
+
+  sistemaAguaGlobal  SistemaAguaGlobal?   @relation(fields: [idSistemaAguaGlobal], references: [id], onDelete: SetNull)
+  centroPoblado      CentroPoblado        @relation(fields: [idCentroP], references: [id], onDelete: Cascade)
+  prestadorCaptacion PrestadorCaptacion[]
+
+  @@index([idSistemaAguaGlobal])
+  @@index([idCentroP])
+  @@map("captacion")
+}
+
+model PrestadorCaptacion {
+  id          Int @id
+  idPrestador Int @map("id_prestador")
+  idCaptacion Int @map("id_captacion")
+
+  prestador Prestador @relation(fields: [idPrestador], references: [id], onDelete: Cascade)
+  captacion Captacion @relation(fields: [idCaptacion], references: [id], onDelete: Cascade)
+
+  @@unique([idPrestador, idCaptacion])
+  @@index([idPrestador])
+  @@index([idCaptacion])
+  @@map("prestador_captacion")
+}
+
+model PTAP {
+  idPtap          Int      @id @map("id_ptap")
+  tipoPtap        String?
+  lat             Float?
+  lng             Float?
+  antiguedad      Int?
+  estadoOperativo String?
+  estadoFisico    String?
+  ldesinfectan    Boolean?
+
+  detalles DetallePTAP[]
+
+  @@map("ptap")
+}
+
+model DetallePTAP {
+  id                  String @id
+  idPtap              Int    @map("id_ptap")
+  idSistemaAguaGlobal Int?   @map("id_sistemaAguaGlobal")
+  idCentroP           Int    @map("id_centroP")
+  idPrestador         Int    @map("id_prestador")
+
+  ptap              PTAP               @relation(fields: [idPtap], references: [idPtap], onDelete: Cascade)
+  sistemaAguaGlobal SistemaAguaGlobal? @relation(fields: [idSistemaAguaGlobal], references: [id], onDelete: SetNull)
+  centroPoblado     CentroPoblado      @relation(fields: [idCentroP], references: [id], onDelete: Cascade)
+  prestador         Prestador          @relation(fields: [idPrestador], references: [id], onDelete: Cascade)
+
+  @@index([idPtap])
+  @@index([idSistemaAguaGlobal])
+  @@index([idCentroP])
+  @@index([idPrestador])
+  @@map("detalle_ptap")
+}
+
+model Reservorio {
+  id                  Int      @id @map("id_reservorio")
+  idSistemaAguaGlobal Int?     @map("id_sistemaAguaGlobal")
+  idCentroP           Int      @map("id_centroP")
+  idPrestador         Int      @map("id_prestador")
+  tipoReservorio      String?
+  lat                 Float?
+  lng                 Float?
+  volumen             Float?
+  antiguedad          Int?
+  estadoOperativo     String?
+  estadoFisico        String?
+  ldesinfectan        Boolean?
+
+  sistemaAguaGlobal SistemaAguaGlobal? @relation(fields: [idSistemaAguaGlobal], references: [id], onDelete: SetNull)
+  centroPoblado     CentroPoblado      @relation(fields: [idCentroP], references: [id], onDelete: Cascade)
+  prestador         Prestador          @relation(fields: [idPrestador], references: [id], onDelete: Cascade)
+
+  @@index([idSistemaAguaGlobal])
+  @@index([idCentroP])
+  @@index([idPrestador])
+  @@map("reservorio")
+}
+
+model SistemaAlcantaGlobal {
+  id     Int     @id @map("id_sistemaAlcaGlobal")
+  nombre String?
+
+  ptars                  PTAR[]
+  detalleVertimientos    DetalleVertimiento[]
+  sistemasAlcantarillado SistemaAlcantarillado[]
+
+  @@map("sistema_alcan_global")
+}
+
+model PTAR {
+  id                          Int     @id @map("id_ptar")
+  idSistemaAlcantarillaGlobal Int?    @map("id_sistemaAlcaGlobal")
+  idCentroP                   Int     @map("id_centroP")
+  idPrestador                 Int     @map("id_prestador")
+  tipoPtar                    String?
+  lat                         Float?
+  lng                         Float?
+  antiguedad                  Int?
+  estadoOperativo             String?
+  estadoFisico                String?
+
+  sistemaAlcantaGlobal SistemaAlcantaGlobal? @relation(fields: [idSistemaAlcantarillaGlobal], references: [id], onDelete: SetNull)
+  centroPoblado        CentroPoblado         @relation(fields: [idCentroP], references: [id], onDelete: Cascade)
+  prestador            Prestador             @relation(fields: [idPrestador], references: [id], onDelete: Cascade)
+
+  @@index([idSistemaAlcantarillaGlobal])
+  @@index([idCentroP])
+  @@index([idPrestador])
+  @@map("ptar")
+}
+
+model DisposicionFinal {
+  idVertimiento  Int      @id @map("id_vertimiento")
+  tipoDispo      String?
+  lat            Float?
+  lng            Float?
+  nombFuenteVert String?
+  lAutorizacion  Boolean?
+
+  detalles DetalleVertimiento[]
+
+  @@map("disposicion_final")
+}
+
+model DetalleVertimiento {
+  id                          String @id
+  idVertimiento               Int    @map("id_vertimiento")
+  idSistemaAlcantarillaGlobal Int?   @map("id_sistemaAlcaGlobal")
+  idCentroP                   Int    @map("id_centroP")
+  idPrestador                 Int    @map("id_prestador")
+
+  disposicionFinal     DisposicionFinal      @relation(fields: [idVertimiento], references: [idVertimiento], onDelete: Cascade)
+  sistemaAlcantaGlobal SistemaAlcantaGlobal? @relation(fields: [idSistemaAlcantarillaGlobal], references: [id], onDelete: SetNull)
+  centroPoblado        CentroPoblado         @relation(fields: [idCentroP], references: [id], onDelete: Cascade)
+  prestador            Prestador             @relation(fields: [idPrestador], references: [id], onDelete: Cascade)
+
+  @@index([idVertimiento])
+  @@index([idSistemaAlcantarillaGlobal])
+  @@index([idCentroP])
+  @@index([idPrestador])
+  @@map("detalle_vertimiento")
+}
+
+model SistemaAlcantarillado {
+  id                          Int      @id @default(autoincrement())
+  idSistemaAlcantarillaGlobal Int?     @map("id_sistemaAlcaGlobal")
+  idCentroP                   Int?     @map("id_centroP")
+  idPrestador                 Int      @map("id_prestador")
+  tieneUBS                    Boolean?
+  tipoUBSoDispoExcreta        String?
+  antiguedad                  Int?
+  estadoGeneralUBS            String?
+  estadoOperativo             String?
+  tieneAlcanta                Boolean?
+  tieneBombeo                 Boolean?
+  numBombeo                   Int?
+  numPtar                     Int?
+  numVert                     Int?
+
+  sistemaAlcantaGlobal SistemaAlcantaGlobal? @relation(fields: [idSistemaAlcantarillaGlobal], references: [id], onDelete: SetNull)
+  centroPoblado        CentroPoblado?        @relation(fields: [idCentroP], references: [id], onDelete: SetNull)
+  prestador            Prestador             @relation(fields: [idPrestador], references: [id], onDelete: Cascade)
+
+  @@index([idSistemaAlcantarillaGlobal])
+  @@index([idCentroP])
+  @@index([idPrestador])
+  @@map("sistema_alcan")
 }
 
 model Usuario {
-  id        BigInt   @id @default(autoincrement())
+  id        Int      @id @default(autoincrement())
   nombres   String
   apellidos String
+  telefono  String   @unique
   correo    String   @unique
-  telefono  String?
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  infra InfraestructuraUsuario[]
+  prestadores PrestadorUsuario[]
 
-  @@map("usuarios")
+  @@map("usuario")
 }
 
-model InfraestructuraUsuario {
-  id        BigInt   @id @default(autoincrement())
-  createdAt DateTime @default(now())
+model PrestadorUsuario {
+  id          Int      @id @default(autoincrement())
+  idPrestador Int      @map("id_prestador")
+  idUsuario   Int      @map("id_usuario")
+  createdAt   DateTime @default(now()) @map("created_at")
 
-  objectid  BigInt
-  usuarioId BigInt
+  prestador Prestador @relation(fields: [idPrestador], references: [id], onDelete: Cascade)
+  usuario   Usuario   @relation(fields: [idUsuario], references: [id], onDelete: Cascade)
 
-  infraestructura Infraestructura @relation(fields: [objectid], references: [objectid], onDelete: Cascade)
-  usuario         Usuario         @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-
-  @@unique([objectid, usuarioId])
-  @@index([objectid])
-  @@index([usuarioId])
-  @@map("infraestructura_usuarios")
+  @@unique([idPrestador, idUsuario])
+  @@index([idPrestador])
+  @@index([idUsuario])
+  @@map("prestador_usuario")
 }
