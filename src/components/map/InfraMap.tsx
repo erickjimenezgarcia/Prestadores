@@ -302,6 +302,8 @@ function NoLeafletPrefix() {
   const map = useMap();
 
   useEffect(() => {
+    if (!map.attributionControl) return;
+
     map.attributionControl.setPrefix(false);
   }, [map]);
 
